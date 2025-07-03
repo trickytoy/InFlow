@@ -2,8 +2,8 @@ import { useState } from "react";
 import { BlockList } from "./blocklist";
 import { Profile } from "./profile";
 import { LockIn } from "./lockin";
+import { User, Activity, Ban, Settings } from "lucide-react";
 import "../global.css";
-
 
 export const Popup = () => {
   const [page, setPage] = useState("home");
@@ -12,53 +12,65 @@ export const Popup = () => {
     if (chrome.runtime?.openOptionsPage) {
       chrome.runtime.openOptionsPage();
     } else {
-      window.open(chrome.runtime.getURL('options.html'));
+      window.open(chrome.runtime.getURL("options.html"));
     }
   };
 
   const renderPage = () => {
     if (page === "profile") return <Profile />;
     if (page === "blocklist") return <BlockList />;
-    else return <LockIn />;
-  }
+    return <LockIn />;
+  };
 
   return (
-    <div className="max-w-md h-[380px] mx-auto bg-gradient-to-r from-grey-50 to-grey-100 shadow-xl p-4 space-y-6">
-      {/* Header Buttons */}
+    <div className="w-[300px] h-[300px] mx-auto bg-gradient-to-rshadow-xl p-4 space-y-6">
+      {/* Icon Header */}
       <div className="flex justify-between items-center">
+        {/* Profile */}
         <button
-          className={`text-md font-semibold ${
-            page === "profile" ? "text-indigo-600" : "text-gray-600"
-          } hover:underline`}
           onClick={() => setPage("profile")}
+          className={`p-2 rounded hover:bg-gray-200 transition ${
+            page === "profile" ? "text-indigo-600" : "text-gray-600"
+          }`}
+          title="Profile"
         >
-          Profile
+          <User size={20} />
         </button>
-        <h1
-          className="text-lg font-bold text-indigo-700 cursor-pointer"
+
+        {/* In Flow */}
+        <button
           onClick={() => setPage("lockIn")}
+          className={`p-2 rounded hover:bg-gray-200 transition ${
+            page === "lockIn" || page === "home" ? "text-indigo-700" : "text-gray-600"
+          }`}
+          title="In Flow"
         >
-          LOCK IN
-        </h1>
+          <Activity size={20} />
+        </button>
+
+        {/* Block List or Options */}
         {page !== "profile" ? (
           <button
-            className={`text-md font-semibold ${
-              page === "blocklist" ? "text-red-600" : "text-gray-600"
-            } hover:underline`}
             onClick={() => setPage("blocklist")}
+            className={`p-2 rounded hover:bg-gray-200 transition ${
+              page === "blocklist" ? "text-red-600" : "text-gray-600"
+            }`}
+            title="Block List"
           >
-            Block List
+            <Ban size={20} />
           </button>
         ) : (
           <button
-            className="text-md text-gray-600 font-semibold hover:underline"
-            onClick={() => openOptionsPage()}
+            onClick={openOptionsPage}
+            className="p-2 rounded text-gray-600 hover:bg-gray-200 transition"
+            title="Options"
           >
-            Options
+            <Settings size={20} />
           </button>
         )}
       </div>
-      {/* Render Dynamic Page */}
+
+      {/* Render Active Page */}
       {renderPage()}
     </div>
   );
