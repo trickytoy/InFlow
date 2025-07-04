@@ -1,110 +1,190 @@
 let session: any = null;
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({ session: null });
+// Promisify chrome.storage.local methods for easier async/await use
+const storageGet = <T>(keys: string | string[] | object): Promise<T> =>
+  new Promise<T>((resolve) => {
+    chrome.storage.local.get(keys, (items) => {
+      resolve(items as T);
+    });
+  });
+const storageSet = (items: object): Promise<void> =>
+  new Promise<void>((resolve) => {
+    chrome.storage.local.set(items, () => resolve());
+  });
+const alarmsClear = (name: string): Promise<boolean> =>
+  new Promise((resolve) => chrome.alarms.clear(name, resolve));
+
+// Initialize session on install
+chrome.runtime.onInstalled.addListener(async () => {
+  await storageSet({ session: null });
+  session = null;
 });
 
+// Helper to save session both in memory and storage
+async function updateSession(newSession: any) {
+  session = newSession;
+  await storageSet({ session });
+}
+
+// Message handler
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "START_SESSION") {
-    const { textInput, durationSeconds } = message.payload;
-    const endTime = Date.now() + durationSeconds * 1000;
+  (async () => {
+    switch (message.type) {
+      case "START_SESSION": {
+        const { textInput, durationSeconds } = message.payload;
+        const endTime = Date.now() + durationSeconds * 1000;
 
-    session = {
-      stage: "ACTIVE",
-      textInput,
-      endTime,
-    };
+        await updateSession({
+          stage: "ACTIVE",
+          textInput,
+          endTime,
+        });
 
-    chrome.storage.local.set({ session });
+        chrome.alarms.create("focus-timer", { when: endTime });
+        sendResponse({ success: true });
+        break;
+      }
 
-    // Set alarm to fire when session ends
-    chrome.alarms.create("focus-timer", { when: endTime });
+      case "RESET_SESSION": {
+        await alarmsClear("focus-timer");
+        await updateSession(null);
+        sendResponse({ success: true });
+        break;
+      }
 
-    sendResponse({ success: true });
-  }
+      case "GET_SESSION": {
+        const data = await storageGet<{ session: any }>("session");
+        sendResponse({ session: data.session });
+        break;
+      }
 
-  if (message.type === "RESET_SESSION") {
-    chrome.alarms.clear("focus-timer");
-    session = null;
-    chrome.storage.local.set({ session });
-    sendResponse({ success: true });
-  }
+      case "GET_SESSION_HISTORY": {
+        const data = await storageGet<{ sessionHistory: any[] }>({ sessionHistory: [] });
+        sendResponse({ sessionHistory: data.sessionHistory });
+        break;
+      }
 
-  if (message.type === "GET_SESSION") {
-    chrome.storage.local.get("session", (data) => {
-      sendResponse({ session: data.session });
-    });
-    return true; // async response
-  }
+      case "PAUSE_SESSION": {
+        if (session?.stage === "ACTIVE") {
+          const remainingSeconds = Math.max(0, Math.floor((session.endTime - Date.now()) / 1000));
+          await updateSession({
+            ...session,
+            stage: "PAUSED",
+            remainingSeconds,
+          });
+          await alarmsClear("focus-timer");
+          sendResponse({ success: true });
+        }
+        break;
+      }
 
-  if (message.type === "GET_SESSION_HISTORY") {
-    chrome.storage.local.get({ sessionHistory: [] }, (data) => {
-      sendResponse({ sessionHistory: data.sessionHistory });
-    });
-    return true; // async response
-  }
+      case "RESUME_SESSION": {
+        if (session?.stage === "PAUSED" && session.remainingSeconds !== undefined) {
+          const newEndTime = Date.now() + session.remainingSeconds * 1000;
 
-  if (message.type === "PAUSE_SESSION") {
-    if (session && session.stage === "ACTIVE") {
-      // Compute remaining time
-      const remainingSeconds = Math.max(0, Math.floor((session.endTime - Date.now()) / 1000));
+          const resumedSession = {
+            ...session,
+            stage: "ACTIVE",
+            endTime: newEndTime,
+          };
+          delete resumedSession.remainingSeconds;
 
-      // Update session
-      session.stage = "PAUSED";
-      session.remainingSeconds = remainingSeconds;
+          await updateSession(resumedSession);
+          chrome.alarms.create("focus-timer", { when: newEndTime });
+          sendResponse({ success: true });
+        }
+        break;
+      }
 
-      chrome.alarms.clear("focus-timer");
-      chrome.storage.local.set({ session });
-      sendResponse({ success: true });
+      case "ADD_BLOCK": {
+        const { url } = message.payload;
+
+        // Get current blockList (default to empty array)
+        const data = await storageGet<{ blockList: string[] }>({ blockList: [] });
+        const currentList = data.blockList;
+
+        // Add URL if not already present
+        if (!currentList.includes(url)) {
+          const updatedList = [...currentList, url];
+          await storageSet({ blockList: updatedList });
+        }
+
+        sendResponse({ success: true });
+        break;
+      }
+
+      case "CHECK_BLOCKED": {
+        // Get current tab URL
+        chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+          const tab = tabs[0];
+          if (!tab || !tab.url) return sendResponse({ isBlocked: false });
+
+          const currentUrl = new URL(tab.url).origin;
+
+          const data = await storageGet<{ blockList: string[] }>({ blockList: [] });
+          const isBlocked = data.blockList.includes(currentUrl);
+
+          sendResponse({ isBlocked });
+        });
+
+        return true; // Allow async response
+      }
+
+      case "CHECK_ALLOWED": {
+        chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+          const tab = tabs[0];
+          if (!tab || !tab.url) return sendResponse({ isAllowed: false });
+
+          const currentUrl = tab.url;
+
+
+          const data = await storageGet<{ allowList: string[] }>({ allowList: [] });
+
+          const isAllowed = data.allowList.includes(currentUrl);
+          console.log(isAllowed, data)
+
+          sendResponse({ isAllowed });
+        });
+
+        return true; // Allow async response
+      }
+
     }
-  }
+  })();
 
-  if (message.type === "RESUME_SESSION") {
-    if (session && session.stage === "PAUSED" && session.remainingSeconds !== undefined) {
-      const newEndTime = Date.now() + session.remainingSeconds * 1000;
-
-      session.stage = "ACTIVE";
-      session.endTime = newEndTime;
-      delete session.remainingSeconds;
-
-      chrome.alarms.create("focus-timer", { when: newEndTime });
-      chrome.storage.local.set({ session });
-
-      sendResponse({ success: true });
-    }
-  }
-
-
-  return true;
+  return true; // async response
 });
 
-// Handle alarm trigger when session ends
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "focus-timer") {
-    chrome.storage.local.get("session", (data) => {
-      const session = data.session;
-      if (session && session.stage === "ACTIVE") {
-        session.stage = "COMPLETED";
-        chrome.storage.local.set({ session });
+// Alarm handler for focus session end
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== "focus-timer") return;
 
-         // ✅ Send a Chrome notification
-        chrome.notifications.create({
-          type: "basic",
-          iconUrl: "public/192.png", // Replace with your actual icon path
-          title: "Session Complete",
-          message: `Your focus session for "${session.textInput}" is complete!`,
-          priority: 2
-        });
+  const data = await storageGet<{ session: any }>("session");
+  const currentSession = data.session;
 
-        const dateStr = new Date().toISOString().split("T")[0];
-        chrome.storage.local.get({ sessionHistory: [] }, (data) => {
-          const updatedHistory = [
-            ...data.sessionHistory,
-            { textInput: session.textInput, date: dateStr },
-          ];
-          chrome.storage.local.set({ sessionHistory: updatedHistory });
-        });
-      }
+  if (currentSession?.stage === "ACTIVE") {
+    currentSession.stage = "COMPLETED";
+    await storageSet({ session: currentSession });
+
+    // Send notification with buttons
+    chrome.notifications.create({
+      type: "basic",
+      iconUrl: "public/192.png", // Replace with your icon path
+      title: "Session Complete",
+      message: `Your focus session for "${currentSession.textInput}" is complete!`,
+      buttons: [
+        { title: "Start Again 🔁" },
+        { title: "Take a Break ☕" },
+      ],
+      priority: 2,
     });
+
+    // Update session history
+    const historyData = await storageGet<{ sessionHistory: any[] }>({ sessionHistory: [] });
+    const updatedHistory = [
+      ...historyData.sessionHistory,
+      { textInput: currentSession.textInput, date: new Date().toISOString().split("T")[0] },
+    ];
+    await storageSet({ sessionHistory: updatedHistory });
   }
 });
