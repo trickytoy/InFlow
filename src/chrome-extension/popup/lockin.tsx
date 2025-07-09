@@ -11,20 +11,19 @@ interface LockInProps {
 }
 
 const TIME_OPTIONS = [
-  { label: "1 min", minutes: 1 },
-  { label: "5 min", minutes: 5 },
-  { label: "10 min", minutes: 10 },
-  { label: "15 min", minutes: 15 },
-  { label: "30 min", minutes: 30 },
-  { label: "1 hr", minutes: 60 },
-  { label: "1hr 30min", minutes: 90 },
-  { label: "2 hr", minutes: 120 },
-  { label: "2hr 30min", minutes: 150 },
-  { label: "3 hr", minutes: 180 },
-  { label: "3hr 30min", minutes: 210 },
-  { label: "4 hr", minutes: 240 },
+  { label: "00:01:00", minutes: 1, seconds: 60 },
+  { label: "00:05:00", minutes: 5, seconds: 300 },
+  { label: "00:10:00", minutes: 10, seconds: 600 },
+  { label: "00:15:00", minutes: 15, seconds: 900 },
+  { label: "00:30:00", minutes: 30, seconds: 1800 },
+  { label: "01:00:00", minutes: 60, seconds: 3600 },
+  { label: "01:30:00", minutes: 90, seconds: 5400 },
+  { label: "02:00:00", minutes: 120, seconds: 7200 },
+  { label: "02:30:00", minutes: 150, seconds: 9000 },
+  { label: "03:00:00", minutes: 180, seconds: 10800 },
+  { label: "03:30:00", minutes: 210, seconds: 12600 },
+  { label: "04:00:00", minutes: 240, seconds: 14400 },
 ]
-
 const MOTIVATIONAL_QUOTES = [
   "Deep work is like a superpower in our increasingly competitive economy.",
   "The ability to focus is becoming increasingly rare—and increasingly valuable.",

@@ -1,4 +1,8 @@
+import { pipeline } from '@huggingface/transformers';
+
+
 let session: any = null;
+let extractor: any = null; // Cache the model
 
 // Promisify chrome.storage.local methods for easier async/await use
 const storageGet = <T>(keys: string | string[] | object): Promise<T> =>
@@ -14,16 +18,50 @@ const storageSet = (items: object): Promise<void> =>
 const alarmsClear = (name: string): Promise<boolean> =>
   new Promise((resolve) => chrome.alarms.clear(name, resolve));
 
-// Initialize session on install
+// Initialize model and session on install
 chrome.runtime.onInstalled.addListener(async () => {
   await storageSet({ session: null });
   session = null;
+  // Pre-load the model
+  try {
+    extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+    console.log('Model loaded successfully');
+  } catch (error) {
+    console.error('Error loading model:', error);
+  }
 });
 
 // Helper to save session both in memory and storage
 async function updateSession(newSession: any) {
   session = newSession;
   await storageSet({ session });
+}
+
+// Cosine similarity function
+function cosineSimilarity(vecA: number[], vecB: number[]): number {
+  const dot = vecA.reduce((sum, val, i) => sum + val * vecB[i], 0);
+  const normA = Math.sqrt(vecA.reduce((sum, val) => sum + val ** 2, 0));
+  const normB = Math.sqrt(vecB.reduce((sum, val) => sum + val ** 2, 0));
+  return dot / (normA * normB);
+}
+
+// Semantic similarity check function
+async function checkSimilarity(focusText: string, pageContent: string): Promise<number> {
+  try {
+    // Load model if not already loaded
+    if (!extractor) {
+      extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+    }
+
+    const output1 = await extractor(focusText, { pooling: 'mean', normalize: true });
+    const output2 = await extractor(pageContent, { pooling: 'mean', normalize: true });
+
+    const similarity = cosineSimilarity(output1.data, output2.data);
+    return similarity;
+  } catch (error) {
+    console.error('Error in semantic similarity check:', error);
+    return 1; // Return high similarity on error to avoid blocking
+  }
 }
 
 // Message handler
@@ -137,11 +175,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
           const currentUrl = tab.url;
 
-
           const data = await storageGet<{ allowList: string[] }>({ allowList: [] });
-
           const isAllowed = data.allowList.includes(currentUrl);
-          console.log(isAllowed, data)
+          console.log(isAllowed, data);
 
           sendResponse({ isAllowed });
         });
@@ -149,6 +185,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         return true; // Allow async response
       }
 
+      case "CHECK_SIMILARITY": {
+        const { focusText, pageContent } = message.payload;
+        
+        try {
+          const similarity = await checkSimilarity(focusText, pageContent);
+          sendResponse({ similarity });
+        } catch (error) {
+          console.error('Error checking similarity:', error);
+          sendResponse({ similarity: 1 }); // Return high similarity on error
+        }
+        break;
+      }
     }
   })();
 

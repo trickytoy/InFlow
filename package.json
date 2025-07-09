@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build:vite": "vite build",
+    "build:webpack": "webpack --config webpack.config.js",
+    "build": "npm run build:vite && npm run build:webpack",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.6.2",
     "@types/node": "^22.5.5",
     "@uiw/react-heat-map": "^2.3.3",
     "@uiw/react-tooltip": "^4.22.3",
