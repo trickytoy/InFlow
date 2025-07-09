@@ -1,25 +1,36 @@
-const path = require('path');
+// webpack.background.config.js
+import path from "path";
+import { fileURLToPath } from "url";
 
-module.exports = {
-    mode: 'development',
-    entry: './src/background.ts',
-    output: {
-        path: path.resolve(__dirname, 'dist'),
-        filename: 'background.js'
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export default {
+  mode: "production",
+  devtool: "source-map",
+  entry: {
+    background: {
+      import: "./src/background.ts",
+      chunkLoading: "import-scripts", // <-- Critical!
     },
-    resolve: {
-        extensions: ['.ts', '.js'],
-        fallback: {
-            fs: false, // If lancedb needs Node core modules, polyfill or mock
-        },
-    },
-    module: {
-        rules: [
-            {
-                test: /\.ts$/,
-                use: 'ts-loader',
-                exclude: /node_modules/,
-            },
-        ],
-    },
+  },
+  output: {
+    path: path.resolve(__dirname, "dist"),
+    filename: "[name].js", // outputs background.js
+    //clean: true,
+  },
+  resolve: {
+    extensions: [".ts", ".js"],
+  },
+  module: {
+    rules: [
+      {
+        test: /\.ts$/,
+        use: "ts-loader",
+        exclude: /node_modules/,
+      },
+    ],
+  },
+  experiments: {
+    topLevelAwait: true,
+  },
 };

@@ -13,7 +13,10 @@ export const Profile = () => {
         </div>
       </div>
 
-      <div className="w-full h-36 bg-white border border-gray-200 flex items-center justify-center rounded-xl shadow-inner">
+      <div
+        className="w-full h-36 bg-white border border-gray-200 flex items-center justify-center rounded-xl shadow-inner"
+        style={{ marginTop: "20px" }}
+      >
         <span className="text-gray-400">Graph will appear here</span>
       </div>
     </div>

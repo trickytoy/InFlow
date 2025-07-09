@@ -1,157 +1,253 @@
-import { useState, useEffect } from "react";
+"use client"
 
-// enum SessionStage {
-//   FORM = "FORM",
-//   ACTIVE = "ACTIVE",
-//   PAUSED = "PAUSED",
-//   COMPLETED = "COMPLETED",
-// }
+import type React from "react"
 
-export const LockIn = () => {
-  const [session, setSession] = useState<any>(null);
-  const [textInput, setTextInput] = useState<string>("");
-  const [hours, setHours] = useState<number>(0);
-  const [minutes, setMinutes] = useState<number>(0);
-  const [error, setError] = useState<string>("");
+import { useState, useEffect } from "react"
+import { ChevronRight, ChevronUp, ChevronDown, Play, RotateCcw } from "lucide-react"
+
+interface LockInProps {
+  resetTrigger?: boolean
+  onResetHandled?: () => void
+}
+
+const TIME_OPTIONS = [
+  { label: "00:01:00", minutes: 1, seconds: 60 },
+  { label: "00:05:00", minutes: 5, seconds: 300 },
+  { label: "00:10:00", minutes: 10, seconds: 600 },
+  { label: "00:15:00", minutes: 15, seconds: 900 },
+  { label: "00:30:00", minutes: 30, seconds: 1800 },
+  { label: "01:00:00", minutes: 60, seconds: 3600 },
+  { label: "01:30:00", minutes: 90, seconds: 5400 },
+  { label: "02:00:00", minutes: 120, seconds: 7200 },
+  { label: "02:30:00", minutes: 150, seconds: 9000 },
+  { label: "03:00:00", minutes: 180, seconds: 10800 },
+  { label: "03:30:00", minutes: 210, seconds: 12600 },
+  { label: "04:00:00", minutes: 240, seconds: 14400 },
+]
+const MOTIVATIONAL_QUOTES = [
+  "Deep work is like a superpower in our increasingly competitive economy.",
+  "The ability to focus is becoming increasingly rare—and increasingly valuable.",
+  "Concentration is the secret of strength in politics, in war, in trade, in short in all management.",
+  "Focus on being productive instead of busy.",
+  "The successful warrior is the average person with laser-like focus.",
+  "Where focus goes, energy flows and results show.",
+  "It is during our darkest moments that we must focus to see the light.",
+  "Lack of direction, not lack of time, is the problem.",
+  "The art of being wise is knowing what to overlook.",
+  "Concentrate all your thoughts upon the work at hand.",
+]
+
+export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
+  const [session, setSession] = useState<any>(null)
+  const [step, setStep] = useState(1)
+  const [textInput, setTextInput] = useState<string>("")
+  const [selectedTimeIndex, setSelectedTimeIndex] = useState(0)
+  const [currentQuote, setCurrentQuote] = useState("")
 
   const fetchSession = () => {
-    chrome.runtime.sendMessage({ type: "GET_SESSION" }, (response) => {
-      setSession(response?.session);
-    });
-  };
+    chrome.runtime.sendMessage({ type: "GET_SESSION" }, (response: { session: any }) => {
+      setSession(response?.session)
+    })
+  }
+
+
 
   useEffect(() => {
-    fetchSession();
-    const interval = setInterval(fetchSession, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    fetchSession()
+    const interval = setInterval(fetchSession, 1000)
+    // Set a random quote when component mounts
+    setCurrentQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)])
+    return () => clearInterval(interval)
+  }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const totalMinutes = hours * 60 + minutes;
-    if (totalMinutes < 1 || totalMinutes > 240) {
-      setError("Total time must be between 1 minute and 4 hours.");
-      return;
+  const handleTextSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (textInput.trim()) {
+      setStep(2)
     }
-    setError("");
-    const totalSeconds = totalMinutes * 60;
-    chrome.runtime.sendMessage({
-      type: "START_SESSION",
-      payload: { textInput, durationSeconds: totalSeconds },
-    }, fetchSession);
-  };
+  }
 
-  const handlePause = () => chrome.runtime.sendMessage({ type: "PAUSE_SESSION" }, fetchSession);
-  const handleResume = () => chrome.runtime.sendMessage({ type: "RESUME_SESSION" }, fetchSession);
-  const handleReset = () => chrome.runtime.sendMessage({ type: "RESET_SESSION" }, fetchSession);
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && textInput.trim()) {
+      setStep(2)
+    }
+  }
+
+  const incrementTime = () => {
+    setSelectedTimeIndex((prev) => (prev < TIME_OPTIONS.length - 1 ? prev + 1 : prev))
+  }
+
+  const decrementTime = () => {
+    setSelectedTimeIndex((prev) => (prev > 0 ? prev - 1 : prev))
+  }
+
+  const handleFinalSubmit = () => {
+    const selectedTime = TIME_OPTIONS[selectedTimeIndex]
+    const totalSeconds = selectedTime.minutes * 60
+    chrome.runtime.sendMessage(
+      {
+        type: "START_SESSION",
+        payload: { textInput, durationSeconds: totalSeconds },
+      },
+      () => {
+        fetchSession()
+        // Reset form state
+        setStep(1)
+        setTextInput("")
+        setSelectedTimeIndex(0)
+        // Set new quote for the session
+        setCurrentQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)])
+      },
+    )
+  }
+
+  const handleTimerClick = () => {
+    if (session.stage === "ACTIVE") {
+      chrome.runtime.sendMessage({ type: "PAUSE_SESSION" }, fetchSession)
+    } else if (session.stage === "PAUSED") {
+      chrome.runtime.sendMessage({ type: "RESUME_SESSION" }, fetchSession)
+    }
+  }
+
+  const handleReset = () => chrome.runtime.sendMessage({ type: "RESET_SESSION" }, fetchSession)
 
   const getRemainingTime = () => {
-    if (!session) return "00:00:00";
-    let remaining = 0;
-    if (session.stage === "ACTIVE") {
-      remaining = Math.max(0, Math.floor((session.endTime - Date.now()) / 1000));
-    } else if (session.stage === "PAUSED") {
-      remaining = session.remainingSeconds;
+    if (!session) return "00:00:00"
+    let remaining = 0
+    if (session.stage === "ACTIVE" && session.endTime) {
+      remaining = Math.max(0, Math.floor((session.endTime - Date.now()) / 1000))
+    } else if (session.stage === "PAUSED" && session.remainingSeconds !== undefined) {
+      remaining = session.remainingSeconds
     }
-    const hrs = Math.floor(remaining / 3600);
-    const mins = Math.floor((remaining % 3600) / 60);
-    const secs = remaining % 60;
-    return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
+    const hrs = Math.floor(remaining / 3600)
+    const mins = Math.floor((remaining % 3600) / 60)
+    const secs = remaining % 60
+    return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  }
+
+  useEffect(() => {
+    if (resetTrigger) {
+      handleReset()
+      onResetHandled?.()
+    }
+  }, [resetTrigger])
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-center">
-        <img
-          src="https://i.pinimg.com/736x/b2/91/30/b29130b5f0c691bedc94aa68cbe147cb.jpg"
-          alt="Profile"
-          className="w-20 h-20 rounded-full object-cover border-4 border-gray-200 shadow-md"
-        />
-      </div>
-
+    <div className="bg-white p-3 mx-auto max-w-md w-full">
       {!session ? (
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Enter something..."
-            value={textInput}
-            onChange={(e) => setTextInput(e.target.value)}
-            className="w-full border text-base border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Hours</label>
+        step === 1 ? (
+          <div className="space-y-6 pt-4">
+            <h2 className="text-xl pb-2 font-semibold text-center text-gray-800">What are you working on?</h2>
+            <form onSubmit={handleTextSubmit} className="relative">
               <input
-                type="number"
-                placeholder="0 - 4"
-                min="0"
-                max="4"
-                value={hours}
-                onChange={(e) => setHours(parseInt(e.target.value) || 0)}
-                className="w-full border text-base border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                type="text"
+                placeholder="Enter your task..."
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                autoFocus
               />
-            </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Minutes</label>
-              <input
-                type="number"
-                placeholder="0 - 59"
-                min="0"
-                max="59"
-                value={minutes}
-                onChange={(e) => setMinutes(parseInt(e.target.value) || 0)}
-                className="w-full border text-base border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
+              <button
+                type="submit"
+                disabled={!textInput.trim()}
+                className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full transition-colors ${
+                  textInput.trim() ? "text-indigo-600 hover:text-indigo-800" : "text-gray-300 cursor-not-allowed"
+                }`}
+              >
+                <ChevronRight size={20} />
+              </button>
+            </form>
+            <p className="text-xs text-center text-gray-500">Press Enter or click → to continue</p>
           </div>
-
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-
-          <button
-            type="submit"
-            className="w-full text-base bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700 transition"
-          >
-            Start Session
-          </button>
-        </form>
+        ) : (
+          <div className="space-y-6">
+            <div className="text-center space-y-1">
+              <h2 className="text-xl font-semibold text-gray-800">Set your timer</h2>
+              <p className="text-sm text-gray-500 italic truncate">{textInput}</p>
+            </div>
+            <div className="flex items-center justify-center space-x-6">
+              <button
+                onClick={decrementTime}
+                disabled={selectedTimeIndex === 0}
+                className={`p-2 rounded-full transition-all ${
+                  selectedTimeIndex === 0
+                    ? "text-gray-300 cursor-not-allowed"
+                    : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                }`}
+              >
+                <ChevronDown size={20} />
+              </button>
+              <div className="text-center min-w-[120px]">
+                <div className="text-3xl font-semibold text-gray-800">{TIME_OPTIONS[selectedTimeIndex].label}</div>
+                <div className="text-xs text-gray-400 mt-1">
+                  {selectedTimeIndex + 1} of {TIME_OPTIONS.length}
+                </div>
+              </div>
+              <button
+                onClick={incrementTime}
+                disabled={selectedTimeIndex === TIME_OPTIONS.length - 1}
+                className={`p-2 rounded-full transition-all ${
+                  selectedTimeIndex === TIME_OPTIONS.length - 1
+                    ? "text-gray-300 cursor-not-allowed"
+                    : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                }`}
+              >
+                <ChevronUp size={20} />
+              </button>
+            </div>
+            <button
+              onClick={handleFinalSubmit}
+              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center space-x-2 shadow"
+            >
+              <Play size={16} />
+              <span>Start Session</span>
+            </button>
+          </div>
+        )
       ) : (
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold text-indigo-600">
-            {session.stage === "ACTIVE" && "Session in Progress"}
-            {session.stage === "PAUSED" && "Session Paused"}
-            {session.stage === "COMPLETED" && "🎉 Session Completed!"}
-          </h2>
-
-          {session.stage !== "COMPLETED" && (
-            <div className="text-4xl font-mono">{getRemainingTime()}</div>
-          )}
-
-          <p className="text-gray-600">{session.textInput}</p>
-
-          <div className="flex justify-center space-x-4">
-            {session.stage === "ACTIVE" && (
-              <button onClick={handlePause} className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">
-                Pause
+        <div className="text-center space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold text-gray-800 px-2">
+              {session.stage === "COMPLETED" ? "🎉 Well Done!" : session.textInput}
+            </h2>
+            {session.stage !== "COMPLETED" && (
+              <button
+                onClick={handleTimerClick}
+                className={`text-4xl font-mono font-semibold tracking-widest transition-all duration-200 px-4 py-2 rounded-lg ${
+                  session.stage === "ACTIVE"
+                    ? "text-indigo-700 hover:bg-indigo-50 cursor-pointer"
+                    : "text-yellow-600 hover:bg-yellow-50 cursor-pointer"
+                }`}
+                title={session.stage === "ACTIVE" ? "Click to pause" : "Click to resume"}
+              >
+                {getRemainingTime()}
               </button>
             )}
-            {session.stage === "PAUSED" && (
-              <button onClick={handleResume} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
-                Resume
-              </button>
-            )}
-            {(session.stage === "ACTIVE" || session.stage === "PAUSED") && (
-              <button onClick={handleReset} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
-                Stop
-              </button>
-            )}
-            {session.stage === "COMPLETED" && (
-              <button onClick={handleReset} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                Start New Session
-              </button>
+            {session.stage !== "COMPLETED" && (
+              <p className="text-xs text-gray-400 px-2">
+                {session.stage === "ACTIVE" ? "Click time to pause" : "Click time to resume"}
+              </p>
             )}
           </div>
+
+          <div className="bg-gray-100 rounded-md px-4 py-2 text-sm text-gray-600 shadow-sm">
+            <p className="italic text-xs leading-relaxed">"{currentQuote}"</p>
+          </div>
+
+          {session.stage === "COMPLETED" && (
+            <div className="flex justify-center">
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <RotateCcw size={16} />
+                <span>New Session</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
-  );
-};
+  )
+}

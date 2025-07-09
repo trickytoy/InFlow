@@ -1,5 +1,6 @@
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 
+// Check if a string is a valid HTTP/HTTPS URL
 const isValidUrl = (url: string): boolean => {
   try {
     const parsed = new URL(url);
@@ -14,7 +15,22 @@ export const BlockList = () => {
   const [blockList, setBlockList] = useState<string[]>([]);
   const [error, setError] = useState<string>("");
 
-  const handleAdd = (e: FormEvent<HTMLFormElement>) => {
+  // Load from chrome.storage.local on mount
+  useEffect(() => {
+    chrome.storage.local.get(["blockList"], (result) => {
+      if (Array.isArray(result.blockList)) {
+        setBlockList(result.blockList);
+      }
+    });
+  }, []);
+
+  const saveToStorage = async (newList: string[]) => {
+    return new Promise<void>((resolve) => {
+      chrome.storage.local.set({ blockList: newList }, () => resolve());
+    });
+  };
+
+  const handleAdd = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!isValidUrl(blockInput)) {
       setError("Please enter a valid URL (starting with http:// or https://)");
@@ -24,7 +40,11 @@ export const BlockList = () => {
       setError("This URL is already in the block list.");
       return;
     }
-    setBlockList((prev) => [...prev, blockInput]);
+
+    const updatedList = [...blockList, blockInput];
+    setBlockList(updatedList);
+    await saveToStorage(updatedList);
+
     setBlockInput("");
     setError("");
   };
@@ -34,8 +54,9 @@ export const BlockList = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-3">
       <h1 className="text-2xl font-bold text-red-600">Blocked List</h1>
+
       <form onSubmit={handleAdd} className="space-y-2">
         <input
           type="text"
@@ -53,7 +74,6 @@ export const BlockList = () => {
         </button>
       </form>
 
-      {/* Scrollable Block List */}
       <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
         {blockList.length === 0 ? (
           <p className="text-gray-500">You currently have no blocked items.</p>
