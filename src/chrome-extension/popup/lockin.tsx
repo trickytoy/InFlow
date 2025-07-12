@@ -25,16 +25,16 @@ const TIME_OPTIONS = [
   { label: "04:00:00", minutes: 240, seconds: 14400 },
 ]
 const MOTIVATIONAL_QUOTES = [
-  "Deep work is like a superpower in our increasingly competitive economy.",
-  "The ability to focus is becoming increasingly rare—and increasingly valuable.",
-  "Concentration is the secret of strength in politics, in war, in trade, in short in all management.",
-  "Focus on being productive instead of busy.",
-  "The successful warrior is the average person with laser-like focus.",
-  "Where focus goes, energy flows and results show.",
-  "It is during our darkest moments that we must focus to see the light.",
-  "Lack of direction, not lack of time, is the problem.",
-  "The art of being wise is knowing what to overlook.",
-  "Concentrate all your thoughts upon the work at hand.",
+  "\"Deep work is like a superpower in our increasingly competitive economy.\" - Obama",
+  "\"The ability to focus is becoming increasingly rare—and increasingly valuable.\" - Tom",
+  "\"Concentration is the secret of strength in politics, in war, in trade, in short in all management.\" - Unknown",
+  "\"Focus on being productive instead of busy.\" - Someone important, probably",
+  "\"The successful warrior is the average person with laser-like focus.\" - Bruce Lee",
+  "\"Where focus goes, energy flows and results show.\" - Chatgpt",
+  "\"It is during our darkest moments that we must focus to see the light.\" - ",
+  "\"Lack of direction, not lack of time, is the problem.\" - made it up",
+  "\"The art of being wise is knowing what to overlook.\" - Tom and Jerry",
+  "\"Concentrate all your thoughts upon the work at hand.\" - Einstein"
 ]
 
 export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
@@ -232,7 +232,7 @@ export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
           </div>
 
           <div className="bg-gray-100 rounded-md px-4 py-2 text-sm text-gray-600 shadow-sm">
-            <p className="italic text-xs leading-relaxed">"{currentQuote}"</p>
+            <p className="italic text-xs leading-relaxed">{currentQuote}</p>
           </div>
 
           {session.stage === "COMPLETED" && (

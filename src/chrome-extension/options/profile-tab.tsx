@@ -2,6 +2,7 @@
 
 import HeatMap from "@uiw/react-heat-map"
 import Tooltip from "@uiw/react-tooltip"
+import { Activity } from "lucide-react"
 
 // Heatmap data
 interface HeatMapEntry {
@@ -10,28 +11,24 @@ interface HeatMapEntry {
 }
 
 interface ProfileTabProps {
-  userName: string
   historyData: { id: number; action: string; date: string }[]
   heatMapData: HeatMapEntry[]
 }
 
-const ProfileTab = ({ userName, historyData, heatMapData }: ProfileTabProps) => {
+const ProfileTab = ({historyData, heatMapData }: ProfileTabProps) => {
   return (
     <div className="space-y-10">
       {/* User Info */}
       <div className="flex items-center space-x-4">
-        <div className="w-16 h-16 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg">
-          {userName[0]}
-        </div>
+        <Activity className="w-10 h-10 text-[#8c52ff]" />
         <div>
-          <div className="text-4xl font-extrabold text-gray-800">Welcome, {userName}!</div>
+          <div className="text-4xl font-extrabold text-gray-800">Welcome!</div>
           <div className="text-gray-500">Here's your recent study activity.</div>
         </div>
       </div>
 
       {/* Heatmap */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">Study Heatmap</h2>
+      <div className="bg-white rounded-xl shadow-lg pt-6 pb-4 pl-6 pr-6">
         <div className="w-full overflow-x-auto">
           <HeatMap
             value={heatMapData}
@@ -55,23 +52,23 @@ const ProfileTab = ({ userName, historyData, heatMapData }: ProfileTabProps) => 
       </div>
 
       {/* History Table */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className="bg-white rounded-xl shadow-lg">
         <h2 className="text-2xl font-semibold text-gray-800 mb-4">Session History</h2>
         {historyData.length > 0 ? (
           <table className="w-full table-auto">
             <thead className="text-gray-600 text-sm uppercase bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left">#</th>
-                <th className="px-4 py-3 text-left">Session</th>
-                <th className="px-4 py-3 text-left">Date</th>
+                <th className="px-6 py-4 text-left">#</th>
+                <th className="px-6 py-4 text-left">Session</th>
+                <th className="px-6 py-4 text-left">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {historyData.map((entry) => (
                 <tr key={entry.id} className="hover:bg-gray-50 transition">
-                  <td className="px-4 py-3 font-medium text-gray-800">{entry.id}</td>
-                  <td className="px-4 py-3">{entry.action}</td>
-                  <td className="px-4 py-3 text-gray-500">{entry.date}</td>
+                  <td className="px-6 py-4 font-medium text-gray-800">{entry.id}</td>
+                  <td className="px-6 py-4">{entry.action}</td>
+                  <td className="px-6 py-4 text-gray-500">{entry.date}</td>
                 </tr>
               ))}
             </tbody>

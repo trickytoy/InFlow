@@ -26,7 +26,6 @@ interface HeatMapEntry {
 type TabType = "profile" | "settings" | "faq"
 
 const Profile = () => {
-  const userName = "Hritwik"
   const [activeTab, setActiveTab] = useState<TabType>("profile")
   const [historyData, setHistoryData] = useState<{ id: number; action: string; date: string }[]>([])
   const [heatMapData, setHeatMapData] = useState<HeatMapEntry[]>([])
@@ -125,7 +124,7 @@ const handleRemoveFromBlockList = async (item: string) => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition ${
                   activeTab === tab.id
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md"
+                    ? "bg-[#8c52ff] text-white shadow-md"
                     : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
                 }`}
               >
@@ -137,7 +136,7 @@ const handleRemoveFromBlockList = async (item: string) => {
 
           {/* Feedback Link */}
           <a
-            href="https://forms.google.com/your-feedback-form-id"
+            href="https://docs.google.com/forms/d/e/1FAIpQLSdTAYWRtCMLknlurZFJIxwKeGXl3FD269WIIjBpGkRTNr8gxA/viewform?usp=dialog"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition font-medium"
@@ -150,7 +149,7 @@ const handleRemoveFromBlockList = async (item: string) => {
 
       {/* Tab Content */}
       {activeTab === "profile" && (
-        <ProfileTab userName={userName} historyData={historyData} heatMapData={heatMapData} />
+        <ProfileTab historyData={historyData} heatMapData={heatMapData} />
       )}
       {activeTab === "settings" && (
         <SettingsTab

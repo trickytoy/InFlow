@@ -151,12 +151,17 @@ async function runFocusCheck() {
         alignItems: 'center',
         fontSize: '24px',
         fontFamily: 'Arial, sans-serif',
+        textAlign: 'center',
+        padding: '20px',
+        boxSizing: 'border-box',
       });
       blocker.innerHTML = `
         <h1>🚫 Access Blocked</h1>
         <p>This page is unrelated to your focus topic:</p>
         <strong>${session.textInput}</strong>
-        <p style="margin-top: 10px;"><em>Similarity Score: ${similarity.toFixed(4)}</em></p>
+        <p style="margin-top: 20px; font-size: 18px; color: #ffe0e0;">
+          💡 If this page is actually helpful, consider adding it to your allow list from the <strong>Settings</strong> tab.
+        </p>
       `;
 
       document.head.innerHTML = '';
@@ -187,7 +192,7 @@ async function runFocusCheck() {
       });
 
       const warningText = document.createElement('span');
-      warningText.textContent = `⚠️ Warning: This page may be unrelated to your focus topic. Similarity Score: ${similarity.toFixed(4)}`;
+      warningText.textContent = `⚠️ Warning: This page may be unrelated to your focus topic.`;
       warningText.style.paddingLeft = '5px';
       warningText.style.paddingRight = '5px';
       warningBanner.appendChild(warningText);
