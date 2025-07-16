@@ -21,15 +21,6 @@
 
 ---
 
-## 📸 Screenshots
-
-> *(Add actual screenshots to the `screenshots/` folder and link them below)*
-
-![Popup Interface](./screenshots/popup.png)  
-![Focus Alert](./screenshots/alert.png)
-
----
-
 ## 🧰 Tech Stack
 
 - **React** — Component-based UI
