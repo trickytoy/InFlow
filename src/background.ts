@@ -157,11 +157,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const tab = tabs[0];
           if (!tab || !tab.url) return sendResponse({ isBlocked: false });
 
-          const currentUrl = new URL(tab.url).origin;
+          const currentUrl = tab.url;
 
           const data = await storageGet<{ blockList: string[] }>({ blockList: [] });
+          console.log(data.blockList, )
           const isBlocked = data.blockList.includes(currentUrl);
-
+          console.log("here", isBlocked)
           sendResponse({ isBlocked });
         });
 
@@ -220,10 +221,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       iconUrl: "public/192.png", // Replace with your icon path
       title: "Session Complete",
       message: `Your focus session for "${currentSession.textInput}" is complete!`,
-      buttons: [
-        { title: "Start Again 🔁" },
-        { title: "Take a Break ☕" },
-      ],
       priority: 2,
     });
 

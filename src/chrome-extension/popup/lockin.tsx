@@ -26,7 +26,7 @@ const TIME_OPTIONS = [
 ]
 const MOTIVATIONAL_QUOTES = [
   "\"Deep work is like a superpower in our increasingly competitive economy.\" - Obama",
-  "\"The ability to focus is becoming increasingly rare—and increasingly valuable.\" - Tom",
+  "\"The ability to focus is becoming increasingly rare and increasingly valuable.\" - Tom",
   "\"Concentration is the secret of strength in politics, in war, in trade, in short in all management.\" - Unknown",
   "\"Focus on being productive instead of busy.\" - Someone important, probably",
   "\"The successful warrior is the average person with laser-like focus.\" - Bruce Lee",
@@ -49,8 +49,6 @@ export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
       setSession(response?.session)
     })
   }
-
-
 
   useEffect(() => {
     fetchSession()
@@ -101,14 +99,6 @@ export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
     )
   }
 
-  const handleTimerClick = () => {
-    if (session.stage === "ACTIVE") {
-      chrome.runtime.sendMessage({ type: "PAUSE_SESSION" }, fetchSession)
-    } else if (session.stage === "PAUSED") {
-      chrome.runtime.sendMessage({ type: "RESUME_SESSION" }, fetchSession)
-    }
-  }
-
   const handleReset = () => chrome.runtime.sendMessage({ type: "RESET_SESSION" }, fetchSession)
 
   const getRemainingTime = () => {
@@ -116,8 +106,6 @@ export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
     let remaining = 0
     if (session.stage === "ACTIVE" && session.endTime) {
       remaining = Math.max(0, Math.floor((session.endTime - Date.now()) / 1000))
-    } else if (session.stage === "PAUSED" && session.remainingSeconds !== undefined) {
-      remaining = session.remainingSeconds
     }
     const hrs = Math.floor(remaining / 3600)
     const mins = Math.floor((remaining % 3600) / 60)
@@ -212,22 +200,9 @@ export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
               {session.stage === "COMPLETED" ? "🎉 Well Done!" : session.textInput}
             </h2>
             {session.stage !== "COMPLETED" && (
-              <button
-                onClick={handleTimerClick}
-                className={`text-4xl font-mono font-semibold tracking-widest transition-all duration-200 px-4 py-2 rounded-lg ${
-                  session.stage === "ACTIVE"
-                    ? "text-indigo-700 hover:bg-indigo-50 cursor-pointer"
-                    : "text-yellow-600 hover:bg-yellow-50 cursor-pointer"
-                }`}
-                title={session.stage === "ACTIVE" ? "Click to pause" : "Click to resume"}
-              >
+              <div className="text-4xl font-mono font-semibold tracking-widest text-indigo-700 px-4 py-2 rounded-lg">
                 {getRemainingTime()}
-              </button>
-            )}
-            {session.stage !== "COMPLETED" && (
-              <p className="text-xs text-gray-400 px-2">
-                {session.stage === "ACTIVE" ? "Click time to pause" : "Click time to resume"}
-              </p>
+              </div>
             )}
           </div>
 
