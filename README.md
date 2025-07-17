@@ -1,6 +1,6 @@
 # 🧠 Inflow — Stay Focused. Think Smarter.
 
-**Inflow** is a Chrome extension that helps you stay focused online by intelligently analyzing page content using AI. Built with [@xenova/transformers](https://github.com/xenova/transformers), Inflow uses semantic similarity models to detect distracting or off-topic content in real-time—without sending any data to external servers.
+**Inflow** is a Chrome extension that helps you stay focused online by intelligently analyzing page content using AI. Built with [@xenova/transformers](https://github.com/xenova/transformers), Inflow uses semantic similarity models to detect distracting or off-topic content in real-time without sending any data to external servers.
 
 ---
 
@@ -23,11 +23,11 @@
 
 ## 🧰 Tech Stack
 
-- **React** — Component-based UI
-- **Vite** — Lightning-fast build tool optimized for modern web apps and Chrome Extensions
-- **@xenova/transformers** — Local semantic AI with WASM backend
-- **Chrome Extensions (Manifest v3)** — Modern APIs for permissions, background service workers, and offscreen documents
-- **WebAssembly** — Efficient in-browser inference
+- **React** - Component-based UI
+- **Vite** - Lightning-fast build tool optimized for modern web apps and Chrome Extensions
+- **@xenova/transformers** - Local semantic AI with WASM backend
+- **Chrome Extensions (Manifest v3)** - Modern APIs for permissions, background service workers, and offscreen documents
+- **WebAssembly** - Efficient in-browser inference
 
 
 ---
