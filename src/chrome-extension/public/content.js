@@ -43,6 +43,7 @@ async function runFocusCheck() {
     }
 
     const responseAllowed = await safeSendMessage({ type: "CHECK_ALLOWED" });
+    console.log("checkAllowed", responseAllowed)
     const isAllowed = responseAllowed?.isAllowed;
 
     if (isAllowed) {
@@ -123,7 +124,9 @@ async function runFocusCheck() {
       }
     });
 
-    const similarity = responseSim?.similarity;
+    const similarity = responseSim?.similarity.similarity;
+
+    console.log(responseSim)
 
     if (typeof similarity !== 'number') {
       console.error("Invalid similarity response:", similarity);
@@ -132,8 +135,9 @@ async function runFocusCheck() {
 
     console.log(`Cosine similarity: ${similarity.toFixed(4)}`);
 
-    if (similarity < 0.1) {
+    if (similarity < 0.15) {
       // Block page with overlay
+
       const blocker = document.createElement('div');
       blocker.id = 'focus-blocker';
       Object.assign(blocker.style, {
@@ -170,6 +174,8 @@ async function runFocusCheck() {
       document.title = "Blocked by Focus Mode";
 
     } else if (similarity < 0.3) {
+
+      
       // Show subtle warning banner on page with close button
       const warningBanner = document.createElement('div');
       Object.assign(warningBanner.style, {
@@ -229,11 +235,11 @@ async function runFocusCheck() {
 // Function to detect YouTube SPA navigation via URL change
 function observeUrlChange() {
   let currentUrl = location.href;
+  console.log(currentUrl)
 
   const observer = new MutationObserver(() => {
     if (location.href !== currentUrl) {
       currentUrl = location.href;
-      console.log("YouTube URL changed:", currentUrl);
       scheduleRunFocusCheck();
     }
   });

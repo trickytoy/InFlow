@@ -1,23 +1,23 @@
 {
-    "manifest_version": 3,
-    "name": "InFlow",
-    "version": "1.0.0",
-    "action" : {
-      "default_popup": "popup.html"
+  "manifest_version": 3,
+  "name": "Inflow: AI Website Blocker & Focus Productivity Tool",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "popup.html"
   },
   "options_page": "options.html",
-  "description": "Inflow is a Chrome extension that helps you stay focused online by intelligently analyzing page content using AI.",
+  "description": "Inflow is an AI-powered website blocker that helps students and professionals stay focused online by filtering distracting content and boosting productivity.",
   "icons": {
     "16": "public/16.png",
     "32": "public/32.png",
     "48": "public/48.png",
     "192": "public/192.png"
   },
-    "background": {
+  "background": {
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["storage", "alarms", "notifications"],
+  "permissions": ["storage", "alarms", "notifications", "tabs", "activeTab"],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -28,5 +28,4 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   }
-
-  }
+}

@@ -1,8 +1,51 @@
 import { pipeline } from '@huggingface/transformers';
 
+type DistractionCategory = "entertainment" | "shopping" | "social" | "other" | "gaming";
+
+interface DisBreakdown {
+  entertainment: number;
+  shopping: number;
+  social: number;
+  other: number;
+  gaming: number;
+}
+// Represent a site with url and time spent
+interface Site {
+  url: string;
+  duration: number; // time spent in seconds (or ms)
+}
+
+// Current session data structure
+interface CurrSesh {
+  mostTimeSpentSite: Site[];        // array of top sites by duration
+  pieChart: DisBreakdown;           // breakdown for pie chart display
+}
 
 let session: any = null;
 let extractor: any = null; // Cache the model
+let categoryVectors: Record<DistractionCategory, number[]> | null = null;
+
+let topicVector: any = null;
+let topic: any = null;
+
+let currsesh: CurrSesh = {
+  mostTimeSpentSite: [],
+  pieChart: {
+    entertainment: 0,
+    shopping: 0,
+    social: 0,
+    other: 0,
+    gaming: 0,
+  },
+};
+
+const categoryCatalog: Record<DistractionCategory, string> = {
+  entertainment: "Watching movies, videos, or streaming content",
+  social: "Using social media, chatting, or messaging apps",
+  shopping: "Browsing products, deals, or online stores",
+  gaming: "Playing or watching games",
+  other: "General browsing or unrelated content"
+};
 
 // Promisify chrome.storage.local methods for easier async/await use
 const storageGet = <T>(keys: string | string[] | object): Promise<T> =>
@@ -26,6 +69,15 @@ chrome.runtime.onInstalled.addListener(async () => {
   try {
     extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
     console.log('Model loaded successfully');
+    if (!categoryVectors) {
+      categoryVectors = {} as Record<DistractionCategory, number[]>;
+      for (const category in categoryCatalog) {
+        const exampleText = categoryCatalog[category as DistractionCategory];
+        const vector = await extractor(exampleText, { pooling: 'mean', normalize: true });
+        categoryVectors[category as DistractionCategory] = vector.data;
+      }
+      console.log(categoryVectors)
+    }
   } catch (error) {
     console.error('Error loading model:', error);
   }
@@ -34,6 +86,17 @@ chrome.runtime.onInstalled.addListener(async () => {
 // Helper to save session both in memory and storage
 async function updateSession(newSession: any) {
   session = newSession;
+  if (!extractor) {
+    extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+  }
+  if (!newSession) {
+    topicVector = null
+    topic = null
+  } else {
+    topicVector = await extractor(newSession.textInput, { pooling: 'mean', normalize: true })
+    topic = topicVector.data
+  }
+  console.log(session, topic)
   await storageSet({ session });
 }
 
@@ -46,18 +109,45 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
 }
 
 // Semantic similarity check function
-async function checkSimilarity(focusText: string, pageContent: string): Promise<number> {
+async function checkSimilarity(focusText: string, pageContent: string): Promise<any> {
   try {
     // Load model if not already loaded
     if (!extractor) {
       extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
     }
 
-    const output1 = await extractor(focusText, { pooling: 'mean', normalize: true });
-    const output2 = await extractor(pageContent, { pooling: 'mean', normalize: true });
+    if (categoryVectors) {
+      const pageVec = await extractor(pageContent, { pooling: 'mean', normalize: true });
 
-    const similarity = cosineSimilarity(output1.data, output2.data);
-    return similarity;
+      const similarity = cosineSimilarity(topic, pageVec.data);
+
+      console.log("Simlarity score:",similarity)
+      let mostLikelyCategory = "other";
+      let highestScore = -Infinity;
+      const categoryScores: Record<DistractionCategory, number> = {
+        entertainment: 0,
+        shopping: 0,
+        social: 0,
+        other: 0,
+        gaming: 0,
+      };
+
+      for (const category of Object.keys(categoryCatalog) as DistractionCategory[]) {
+        const catVec = categoryVectors[category];
+        const score = cosineSimilarity(catVec, pageVec.data);
+        categoryScores[category] = score;
+        if (score > highestScore) {
+          highestScore = score;
+          mostLikelyCategory = category;
+        }
+      }
+
+
+      currsesh.pieChart[mostLikelyCategory as DistractionCategory] += 1;
+      return { similarity, categoryScores, mostLikelyCategory };
+    }
+
+  
   } catch (error) {
     console.error('Error in semantic similarity check:', error);
     return 1; // Return high similarity on error to avoid blocking
@@ -170,8 +260,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       }
 
       case "CHECK_ALLOWED": {
+        console.log("HELLO??")
         chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+          
           const tab = tabs[0];
+          console.log("HEREEEE",tabs, tab.url)
           if (!tab || !tab.url) return sendResponse({ isAllowed: false });
 
           const currentUrl = tab.url;
@@ -198,6 +291,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
         break;
       }
+
     }
   })();
 
@@ -224,12 +318,41 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       priority: 2,
     });
 
-    // Update session history
+    // Update session history with current session data
     const historyData = await storageGet<{ sessionHistory: any[] }>({ sessionHistory: [] });
+    
+    // Create completed session entry with analytics
+    const completedSessionEntry = {
+      textInput: currentSession.textInput,
+      date: new Date().toISOString().split("T")[0],
+      timestamp: new Date().toISOString(),
+      duration: currentSession.endTime - (currentSession.endTime - Date.now()), // Calculate actual duration
+      analytics: {
+        mostTimeSpentSite: [...currsesh.mostTimeSpentSite], // Copy the array
+        distractionBreakdown: { ...currsesh.pieChart }, // Copy the breakdown
+        totalDistractions: Object.values(currsesh.pieChart).reduce((sum, count) => sum + count, 0)
+      }
+    };
+
     const updatedHistory = [
       ...historyData.sessionHistory,
-      { textInput: currentSession.textInput, date: new Date().toISOString().split("T")[0] },
+      completedSessionEntry
     ];
+    
     await storageSet({ sessionHistory: updatedHistory });
+
+    // Reset current session data for next session
+    currsesh = {
+      mostTimeSpentSite: [],
+      pieChart: {
+        entertainment: 0,
+        shopping: 0,
+        social: 0,
+        other: 0,
+        gaming: 0,
+      },
+    };
+    
+    console.log('Session completed and saved to history:', completedSessionEntry);
   }
 });
