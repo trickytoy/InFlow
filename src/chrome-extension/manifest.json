@@ -1,12 +1,12 @@
 {
     "manifest_version": 3,
-    "name": "Chrome Extension Starter",
+    "name": "InFlow",
     "version": "1.0.0",
     "action" : {
       "default_popup": "popup.html"
   },
   "options_page": "options.html",
-  "description": "This is the description of your extension",
+  "description": "Inflow is a Chrome extension that helps you stay focused online by intelligently analyzing page content using AI.",
   "icons": {
     "16": "public/16.png",
     "32": "public/32.png",
@@ -17,7 +17,7 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["storage", "alarms", "notifications", "scripting"],
+  "permissions": ["storage", "alarms", "notifications"],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -25,7 +25,6 @@
       "run_at": "document_idle"
     }
   ],
-  "host_permissions": ["<all_urls>"],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   }
