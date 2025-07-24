@@ -9,7 +9,6 @@ function safeSendMessage(message) {
     try {
       chrome.runtime.sendMessage(message, (response) => {
         if (chrome.runtime.lastError) {
-          // Could be 'Extension context invalidated' or other errors
           console.warn('sendMessage error:', chrome.runtime.lastError.message);
           resolve(null);
         } else {
@@ -30,7 +29,7 @@ function scheduleRunFocusCheck() {
     runFocusCheck().catch(e => {
       console.error('Error in runFocusCheck:', e);
     });
-  }, 300); // 300ms debounce delay, adjust if needed
+  }, 300);
 }
 
 async function runFocusCheck() {
@@ -42,8 +41,12 @@ async function runFocusCheck() {
       return;
     }
 
+    // Always ensure progress bar appears on valid pages
+    console.log('🎯 About to initialize progress bar from runFocusCheck');
+    initFocusProgressBar(); // Remove await here since we want it to run async
+
     const responseAllowed = await safeSendMessage({ type: "CHECK_ALLOWED" });
-    console.log("checkAllowed", responseAllowed)
+    console.log("checkAllowed", responseAllowed);
     const isAllowed = responseAllowed?.isAllowed;
 
     if (isAllowed) {
@@ -97,19 +100,12 @@ async function runFocusCheck() {
 
     let bodyText = '';
 
-    // YouTube video title selector
     const ytTitleElem = document.querySelector('h1.title yt-formatted-string') || document.querySelector('#container h1.title');
-    if (ytTitleElem) {
-      bodyText += ytTitleElem.innerText + ' ';
-    }
+    if (ytTitleElem) bodyText += ytTitleElem.innerText + ' ';
 
-    // YouTube video description
     const ytDescElem = document.querySelector('#description yt-formatted-string') || document.querySelector('#description');
-    if (ytDescElem) {
-      bodyText += ytDescElem.innerText + ' ';
-    }
+    if (ytDescElem) bodyText += ytDescElem.innerText + ' ';
 
-    // Fallback to body text trimmed to 5000 chars
     if (!bodyText) {
       bodyText = document.body?.innerText?.slice(0, 5000) || '';
     }
@@ -118,16 +114,11 @@ async function runFocusCheck() {
 
     const responseSim = await safeSendMessage({
       type: "CHECK_SIMILARITY",
-      payload: {
-        focusText,
-        pageContent
-      }
+      payload: { focusText, pageContent }
     });
 
-    const similarity = responseSim?.similarity.similarity;
-
-    console.log(responseSim)
-
+    const similarity = responseSim?.similarity?.similarity;
+    console.log("RESPONSE", responseSim)
     if (typeof similarity !== 'number') {
       console.error("Invalid similarity response:", similarity);
       return;
@@ -136,8 +127,6 @@ async function runFocusCheck() {
     console.log(`Cosine similarity: ${similarity.toFixed(4)}`);
 
     if (similarity < 0.15) {
-      // Block page with overlay
-
       const blocker = document.createElement('div');
       blocker.id = 'focus-blocker';
       Object.assign(blocker.style, {
@@ -174,9 +163,6 @@ async function runFocusCheck() {
       document.title = "Blocked by Focus Mode";
 
     } else if (similarity < 0.3) {
-
-      
-      // Show subtle warning banner on page with close button
       const warningBanner = document.createElement('div');
       Object.assign(warningBanner.style, {
         position: 'fixed',
@@ -199,9 +185,7 @@ async function runFocusCheck() {
 
       const warningText = document.createElement('span');
       warningText.textContent = `⚠️ Warning: This page may be unrelated to your focus topic.`;
-      warningText.style.paddingLeft = '5px';
-      warningText.style.paddingRight = '5px';
-      warningBanner.appendChild(warningText);
+      warningText.style.padding = '0 5px';
 
       const closeBtn = document.createElement('button');
       closeBtn.textContent = '✖';
@@ -217,25 +201,22 @@ async function runFocusCheck() {
         lineHeight: '1',
       });
       closeBtn.title = 'Dismiss warning';
-      closeBtn.addEventListener('click', () => {
-        warningBanner.remove();
-      });
+      closeBtn.addEventListener('click', () => warningBanner.remove());
 
+      warningBanner.appendChild(warningText);
       warningBanner.appendChild(closeBtn);
       document.body.appendChild(warningBanner);
-
     } else {
       console.log("Site is related to focus topic, no action needed.");
     }
+
   } catch (e) {
     console.error("Error during semantic comparison or main check:", e);
   }
 }
 
-// Function to detect YouTube SPA navigation via URL change
 function observeUrlChange() {
   let currentUrl = location.href;
-  console.log(currentUrl)
 
   const observer = new MutationObserver(() => {
     if (location.href !== currentUrl) {
@@ -247,22 +228,133 @@ function observeUrlChange() {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-// Initial run and set up observer
-scheduleRunFocusCheck();
-observeUrlChange();
-
-// Also hook into pushState/popstate for completeness
+// Hook into pushState/popstate navigation
 (function() {
   const pushState = history.pushState;
-  history.pushState = function() {
+  history.pushState = function () {
     pushState.apply(this, arguments);
     window.dispatchEvent(new Event('locationchange'));
   };
-  window.addEventListener('popstate', () => {
-    window.dispatchEvent(new Event('locationchange'));
-  });
+  window.addEventListener('popstate', () => window.dispatchEvent(new Event('locationchange')));
   window.addEventListener('locationchange', () => {
     console.log('locationchange event detected:', location.href);
     scheduleRunFocusCheck();
   });
 })();
+
+async function initFocusProgressBar() {
+  console.log('🔍 initFocusProgressBar called');
+  
+  const { session } = await chrome.storage.local.get("session");
+  console.log('📊 Session data:', session);
+  
+  if (!session) {
+    console.log('❌ No session found');
+    return;
+  }
+  
+  if (session.stage !== "ACTIVE") {
+    console.log('❌ Session not active, stage:', session.stage);
+    return;
+  }
+  
+  if (Date.now() >= session.endTime) {
+    console.log('❌ Session ended, current time:', Date.now(), 'end time:', session.endTime);
+    return;
+  }
+
+  const endTime = session.endTime;
+  const startTime = session.startTime;
+  const totalDuration = endTime - startTime;
+  
+  console.log('⏱️ Times - Start:', startTime, 'End:', endTime, 'Duration:', totalDuration);
+
+  if (document.getElementById("inflow-focus-bar")) {
+    console.log('⚠️ Progress bar already exists');
+    return;
+  }
+
+  console.log('✅ Creating progress bar');
+
+  const barContainer = document.createElement("div");
+  barContainer.id = "inflow-focus-bar";
+  barContainer.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 6px;
+    width: 100%;
+    background-color: rgba(0,0,0,0.1);
+    z-index: 999999;
+    opacity: 0;
+    transition: opacity 0.4s ease-in;
+    pointer-events: none;
+  `;
+
+  const progressFill = document.createElement("div");
+  progressFill.style.cssText = `
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(to right, #4ade80, #22c55e);
+    transition: width 1s linear;
+  `;
+
+  barContainer.appendChild(progressFill);
+  document.body.appendChild(barContainer);
+  
+  console.log('📍 Progress bar added to DOM');
+  
+  // Force immediate opacity change with requestAnimationFrame
+  requestAnimationFrame(() => {
+    barContainer.style.opacity = "1";
+    console.log('👁️ Progress bar opacity set to 1');
+  });
+
+  const interval = setInterval(() => {
+    const now = Date.now();
+    const elapsed = now - startTime;
+    const percent = Math.min((elapsed / totalDuration) * 100, 100);
+    progressFill.style.width = `${percent}%`;
+    
+    console.log(`📈 Progress: ${percent.toFixed(1)}%`);
+
+    if (now >= endTime) {
+      console.log('⏰ Session ended, removing progress bar');
+      clearInterval(interval);
+      document.getElementById("inflow-focus-bar")?.remove();
+    }
+  }, 1000);
+}
+
+// Initial calls
+console.log('🚀 Content script loaded, checking for active session...');
+scheduleRunFocusCheck();
+observeUrlChange();
+// Also initialize progress bar immediately when script loads
+initFocusProgressBar();
+
+// DEBUGGING HELPER: Add this to test the progress bar manually
+// You can run testProgressBar() in the browser console to test
+function testProgressBar() {
+  console.log('🧪 Testing progress bar...');
+  
+  // Remove existing bar first
+  document.getElementById("inflow-focus-bar")?.remove();
+  
+  // Create test session data
+  const testSession = {
+    stage: "ACTIVE",
+    startTime: Date.now() - 300000, // Started 5 minutes ago
+    endTime: Date.now() + 1200000,  // Ends in 20 minutes
+    textInput: "Test focus topic"
+  };
+  
+  // Store test session
+  chrome.storage.local.set({ session: testSession }, () => {
+    console.log('🔧 Test session stored:', testSession);
+    initFocusProgressBar();
+  });
+}
+
+// Make testProgressBar available globally for console testing
+window.testProgressBar = testProgressBar;

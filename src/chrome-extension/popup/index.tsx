@@ -16,42 +16,50 @@ export const Popup = () => {
   };
 
   const handleInFlowClick = () => {
-    setResetTrigger(true); // Trigger reset in LockIn
+    setResetTrigger(true);
     setPage("lockIn");
   };
 
   return (
-    <div className="w-[300px] h-[300px] mx-auto bg-gradient-to-rshadow-xl p-4">
-      {/* Icon Header */}
-      <div className="flex justify-between items-center">
-        {/* Profile */}
+    <div className="w-[300px] h-[300px] bg-white border border-gray-200 flex flex-col">
+      {/* Header */}
+      <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
+        <div className="flex items-center space-x-2">
+          <div className="w-5 h-5 bg-blue-600 rounded-sm flex items-center justify-center">
+            <Activity size={12} className="text-white" />
+          </div>
+          <span className="font-medium text-gray-900 text-sm">Focus</span>
+        </div>
         
-
-        {/* In Flow */}
-        <button
-          onClick={handleInFlowClick}
-          className={`p-2 rounded hover:bg-gray-200 transition ${
-            page === "lockIn" || page === "home" ? "text-indigo-700" : "text-gray-600"
-          }`}
-          title="In Flow"
-        >
-          <Activity size={20} />
-        </button>
-
-        {/* Block List or Options */}
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={handleInFlowClick}
+            className={`p-1.5 rounded-md transition-colors ${
+              page === "lockIn" || page === "home" 
+                ? "bg-blue-100 text-blue-600" 
+                : "text-gray-500 hover:bg-gray-100"
+            }`}
+            title="Focus Session"
+          >
+            <Activity size={16} />
+          </button>
 
           <button
             onClick={openOptionsPage}
-            className="p-2 rounded text-gray-600 hover:bg-gray-200 transition"
-            title="Options"
+            className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+            title="Settings"
           >
-            <Settings size={20} />
+            <Settings size={16} />
           </button>
+        </div>
       </div>
 
-      {/* Render Active Page */}
-      <div className="flex items-center justify-center">
-      <LockIn resetTrigger={resetTrigger} onResetHandled={() => setResetTrigger(false)} />
+      {/* Main Content */}
+      <div className="flex-1">
+        <LockIn 
+          resetTrigger={resetTrigger} 
+          onResetHandled={() => setResetTrigger(false)} 
+        />
       </div>
     </div>
   );

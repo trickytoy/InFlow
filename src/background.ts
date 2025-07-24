@@ -61,23 +61,32 @@ const storageSet = (items: object): Promise<void> =>
 const alarmsClear = (name: string): Promise<boolean> =>
   new Promise((resolve) => chrome.alarms.clear(name, resolve));
 
+async function generateCategoryVectors(extractor: any): Promise<Record<DistractionCategory, number[]>> {
+  const vectors: Record<DistractionCategory, number[]> = {} as Record<DistractionCategory, number[]>;
+
+  for (const category in categoryCatalog) {
+    const exampleText = categoryCatalog[category as DistractionCategory];
+    const vector = await extractor(exampleText, { pooling: 'mean', normalize: true });
+    vectors[category as DistractionCategory] = vector.data;
+  }
+
+  return vectors;
+}
+
 // Initialize model and session on install
 chrome.runtime.onInstalled.addListener(async () => {
   await storageSet({ session: null });
   session = null;
-  // Pre-load the model
+
   try {
     extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
     console.log('Model loaded successfully');
+
     if (!categoryVectors) {
-      categoryVectors = {} as Record<DistractionCategory, number[]>;
-      for (const category in categoryCatalog) {
-        const exampleText = categoryCatalog[category as DistractionCategory];
-        const vector = await extractor(exampleText, { pooling: 'mean', normalize: true });
-        categoryVectors[category as DistractionCategory] = vector.data;
-      }
-      console.log(categoryVectors)
+      categoryVectors = await generateCategoryVectors(extractor);
+      console.log(categoryVectors);
     }
+
   } catch (error) {
     console.error('Error loading model:', error);
   }
@@ -116,36 +125,38 @@ async function checkSimilarity(focusText: string, pageContent: string): Promise<
       extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
     }
 
-    if (categoryVectors) {
-      const pageVec = await extractor(pageContent, { pooling: 'mean', normalize: true });
-
-      const similarity = cosineSimilarity(topic, pageVec.data);
-
-      console.log("Simlarity score:",similarity)
-      let mostLikelyCategory = "other";
-      let highestScore = -Infinity;
-      const categoryScores: Record<DistractionCategory, number> = {
-        entertainment: 0,
-        shopping: 0,
-        social: 0,
-        other: 0,
-        gaming: 0,
-      };
-
-      for (const category of Object.keys(categoryCatalog) as DistractionCategory[]) {
-        const catVec = categoryVectors[category];
-        const score = cosineSimilarity(catVec, pageVec.data);
-        categoryScores[category] = score;
-        if (score > highestScore) {
-          highestScore = score;
-          mostLikelyCategory = category;
-        }
-      }
-
-
-      currsesh.pieChart[mostLikelyCategory as DistractionCategory] += 1;
-      return { similarity, categoryScores, mostLikelyCategory };
+    if (!categoryVectors) {
+      categoryVectors = await generateCategoryVectors(extractor);
     }
+
+    const pageVec = await extractor(pageContent, { pooling: 'mean', normalize: true });
+
+    const similarity = cosineSimilarity(topic, pageVec.data);
+
+    console.log("Simlarity score:",similarity)
+    let mostLikelyCategory = "other";
+    let highestScore = -Infinity;
+    const categoryScores: Record<DistractionCategory, number> = {
+      entertainment: 0,
+      shopping: 0,
+      social: 0,
+      other: 0,
+      gaming: 0,
+    };
+
+    for (const category of Object.keys(categoryCatalog) as DistractionCategory[]) {
+      const catVec = categoryVectors[category];
+      const score = cosineSimilarity(catVec, pageVec.data);
+      categoryScores[category] = score;
+      if (score > highestScore) {
+        highestScore = score;
+        mostLikelyCategory = category;
+      }
+    }
+
+
+    currsesh.pieChart[mostLikelyCategory as DistractionCategory] += 1;
+    return { similarity, categoryScores, mostLikelyCategory };
 
   
   } catch (error) {
@@ -161,10 +172,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       case "START_SESSION": {
         const { textInput, durationSeconds } = message.payload;
         const endTime = Date.now() + durationSeconds * 1000;
+        const startTime = Date.now()
 
         await updateSession({
           stage: "ACTIVE",
           textInput,
+          startTime,
           endTime,
         });
 
@@ -320,13 +333,13 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
     // Update session history with current session data
     const historyData = await storageGet<{ sessionHistory: any[] }>({ sessionHistory: [] });
-    
+    console.log("DATEE", new Date().toISOString().split("T")[0])
     // Create completed session entry with analytics
     const completedSessionEntry = {
       textInput: currentSession.textInput,
       date: new Date().toISOString().split("T")[0],
       timestamp: new Date().toISOString(),
-      duration: currentSession.endTime - (currentSession.endTime - Date.now()), // Calculate actual duration
+      duration: (currentSession.endTime - currentSession.startTime) / 60000, // Calculate actual duration
       analytics: {
         mostTimeSpentSite: [...currsesh.mostTimeSpentSite], // Copy the array
         distractionBreakdown: { ...currsesh.pieChart }, // Copy the breakdown

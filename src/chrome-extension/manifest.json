@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Inflow: AI Website Blocker & Focus Productivity Tool",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "action": {
     "default_popup": "popup.html"
   },
   "options_page": "options.html",
-  "description": "Inflow is an AI-powered website blocker that helps students and professionals stay focused online by filtering distracting content and boosting productivity.",
+  "description": "Inflow is an AI website blocker that filters distractions and helps students and professionals stay focused and productive online.",
   "icons": {
     "16": "public/16.png",
     "32": "public/32.png",

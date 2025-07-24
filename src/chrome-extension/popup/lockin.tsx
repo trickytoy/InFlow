@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { ChevronRight, ChevronUp, ChevronDown, Play, RotateCcw } from "lucide-react"
 
@@ -11,10 +10,6 @@ interface LockInProps {
 }
 
 const TIME_OPTIONS = [
-  { label: "00:01:00", minutes: 1, seconds: 60 },
-  { label: "00:05:00", minutes: 5, seconds: 300 },
-  { label: "00:10:00", minutes: 10, seconds: 600 },
-  { label: "00:15:00", minutes: 15, seconds: 900 },
   { label: "00:30:00", minutes: 30, seconds: 1800 },
   { label: "01:00:00", minutes: 60, seconds: 3600 },
   { label: "01:30:00", minutes: 90, seconds: 5400 },
@@ -24,24 +19,25 @@ const TIME_OPTIONS = [
   { label: "03:30:00", minutes: 210, seconds: 12600 },
   { label: "04:00:00", minutes: 240, seconds: 14400 },
 ]
+
 const MOTIVATIONAL_QUOTES = [
-  "\"Deep work is like a superpower in our increasingly competitive economy.\" - Obama",
-  "\"The ability to focus is becoming increasingly rare and increasingly valuable.\" - Tom",
-  "\"Concentration is the secret of strength in politics, in war, in trade, in short in all management.\" - Unknown",
-  "\"Focus on being productive instead of busy.\" - Someone important, probably",
-  "\"The successful warrior is the average person with laser-like focus.\" - Bruce Lee",
-  "\"Where focus goes, energy flows and results show.\" - Chatgpt",
-  "\"It is during our darkest moments that we must focus to see the light.\" - ",
-  "\"Lack of direction, not lack of time, is the problem.\" - made it up",
-  "\"The art of being wise is knowing what to overlook.\" - Tom and Jerry",
-  "\"Concentrate all your thoughts upon the work at hand.\" - Einstein"
+  "\"Deep work is like a superpower in our increasingly competitive economy.\"",
+  "\"The ability to focus is becoming increasingly rare and increasingly valuable.\"", 
+  "\"Concentration is the secret of strength in politics, in war, in trade, in short in all management.\"",
+  "\"Focus on being productive instead of busy.\"",
+  "\"The successful warrior is the average person with laser-like focus.\"",
+  "\"Where focus goes, energy flows and results show.\"",
+  "\"It is during our darkest moments that we must focus to see the light.\"",
+  "\"Lack of direction, not lack of time, is the problem.\"",
+  "\"The art of being wise is knowing what to overlook.\"",
+  "\"Concentrate all your thoughts upon the work at hand.\""
 ]
 
 export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
   const [session, setSession] = useState<any>(null)
   const [step, setStep] = useState(1)
   const [textInput, setTextInput] = useState<string>("")
-  const [selectedTimeIndex, setSelectedTimeIndex] = useState(0)
+  const [selectedTimeIndex, setSelectedTimeIndex] = useState(2)
   const [currentQuote, setCurrentQuote] = useState("")
 
   const fetchSession = () => {
@@ -53,13 +49,11 @@ export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
   useEffect(() => {
     fetchSession()
     const interval = setInterval(fetchSession, 1000)
-    // Set a random quote when component mounts
     setCurrentQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)])
     return () => clearInterval(interval)
   }, [])
 
-  const handleTextSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleTextSubmit = () => {
     if (textInput.trim()) {
       setStep(2)
     }
@@ -89,11 +83,9 @@ export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
       },
       () => {
         fetchSession()
-        // Reset form state
         setStep(1)
         setTextInput("")
-        setSelectedTimeIndex(0)
-        // Set new quote for the session
+        setSelectedTimeIndex(2)
         setCurrentQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)])
       },
     )
@@ -121,72 +113,90 @@ export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
   }, [resetTrigger])
 
   return (
-    <div className="bg-white p-3 mx-auto max-w-md w-full">
+    <div className="p-4 h-full">
       {!session ? (
         step === 1 ? (
           <div className="space-y-6 pt-4">
-            <h2 className="text-xl pb-2 font-semibold text-center text-gray-800">What are you working on?</h2>
-            <form onSubmit={handleTextSubmit} className="relative">
+            <div className="text-center">
+              <h2 className="text-lg font-medium text-gray-900 mb-2">What are you working on?</h2>
+            </div>
+            
+            <div className="relative">
               <input
                 type="text"
                 placeholder="Enter your task..."
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 autoFocus
               />
               <button
-                type="submit"
+                onClick={handleTextSubmit}
                 disabled={!textInput.trim()}
-                className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full transition-colors ${
-                  textInput.trim() ? "text-indigo-600 hover:text-indigo-800" : "text-gray-300 cursor-not-allowed"
+                className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-1 ${
+                  textInput.trim() 
+                    ? "text-blue-600 hover:text-blue-700" 
+                    : "text-gray-300 cursor-not-allowed"
                 }`}
               >
-                <ChevronRight size={20} />
+                <ChevronRight size={18} />
               </button>
-            </form>
-            <p className="text-xs text-center text-gray-500">Press Enter or click → to continue</p>
+            </div>
+            
+            <p className="text-xs text-gray-500 text-center">Press Enter or click → to continue</p>
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="text-center space-y-1">
-              <h2 className="text-xl font-semibold text-gray-800">Set your timer</h2>
-              <p className="text-sm text-gray-500 italic truncate">{textInput}</p>
+            <div className="text-center">
+              <button
+                onClick={() => setStep(1)}
+                className="text-xs text-gray-500 hover:text-gray-700 mb-3"
+              >
+                ← Back
+              </button>
+              <h2 className="text-lg font-medium text-gray-900 mb-1">Set your timer</h2>
+              <p className="text-sm text-gray-600 truncate">"{textInput}"</p>
             </div>
+            
             <div className="flex items-center justify-center space-x-6">
               <button
                 onClick={decrementTime}
                 disabled={selectedTimeIndex === 0}
-                className={`p-2 rounded-full transition-all ${
+                className={`p-2 rounded ${
                   selectedTimeIndex === 0
                     ? "text-gray-300 cursor-not-allowed"
-                    : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                    : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 <ChevronDown size={20} />
               </button>
-              <div className="text-center min-w-[120px]">
-                <div className="text-3xl font-semibold text-gray-800">{TIME_OPTIONS[selectedTimeIndex].label}</div>
+              
+              <div className="text-center min-w-[100px]">
+                <div className="text-2xl font-mono font-semibold text-gray-900">
+                  {TIME_OPTIONS[selectedTimeIndex].label}
+                </div>
                 <div className="text-xs text-gray-400 mt-1">
                   {selectedTimeIndex + 1} of {TIME_OPTIONS.length}
                 </div>
               </div>
+              
               <button
                 onClick={incrementTime}
                 disabled={selectedTimeIndex === TIME_OPTIONS.length - 1}
-                className={`p-2 rounded-full transition-all ${
+                className={`p-2 rounded ${
                   selectedTimeIndex === TIME_OPTIONS.length - 1
                     ? "text-gray-300 cursor-not-allowed"
-                    : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                    : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 <ChevronUp size={20} />
               </button>
             </div>
+            
             <button
               onClick={handleFinalSubmit}
-              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center space-x-2 shadow"
+              className="w-full bg-blue-600 text-white py-2.5 rounded-md font-medium hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
             >
               <Play size={16} />
               <span>Start Session</span>
@@ -194,32 +204,32 @@ export const LockIn = ({ resetTrigger, onResetHandled }: LockInProps) => {
           </div>
         )
       ) : (
-        <div className="text-center space-y-6">
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold text-gray-800 px-2">
-              {session.stage === "COMPLETED" ? "🎉 Well Done!" : session.textInput}
+        <div className="text-center space-y-6 py-4">
+          <div className="space-y-3">
+            <h2 className="text-lg font-medium text-gray-900">
+              {session.stage === "COMPLETED" ? "🎉 Session Complete!" : session.textInput}
             </h2>
             {session.stage !== "COMPLETED" && (
-              <div className="text-4xl font-mono font-semibold tracking-widest text-indigo-700 px-4 py-2 rounded-lg">
+              <div className="text-3xl font-mono font-bold text-blue-600">
                 {getRemainingTime()}
               </div>
             )}
           </div>
 
-          <div className="bg-gray-100 rounded-md px-4 py-2 text-sm text-gray-600 shadow-sm">
-            <p className="italic text-xs leading-relaxed">{currentQuote}</p>
+          <div className="bg-gray-50 rounded-lg p-3 border-l-4 border-blue-500">
+            <p className="text-xs text-gray-700 italic leading-relaxed">
+              {currentQuote}
+            </p>
           </div>
 
           {session.stage === "COMPLETED" && (
-            <div className="flex justify-center">
-              <button
-                onClick={handleReset}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                <RotateCcw size={16} />
-                <span>New Session</span>
-              </button>
-            </div>
+            <button
+              onClick={handleReset}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+            >
+              <RotateCcw size={14} />
+              <span>New Session</span>
+            </button>
           )}
         </div>
       )}
